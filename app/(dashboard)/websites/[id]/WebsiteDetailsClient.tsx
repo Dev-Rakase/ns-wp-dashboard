@@ -6,38 +6,23 @@ import { ArrowLeft, RefreshCw, Plus, Minus, RotateCcw } from "lucide-react";
 import { formatDate, formatCredits, getPlanColor, getStatusColor } from "@/lib/utils";
 import { updateCredits, resetCredits, manualSync } from "@/actions/websites";
 import { useRouter } from "next/navigation";
+import { Prisma } from "@prisma/client";
 
-interface Website {
-  id: number;
-  domain: string;
-  title: string;
-  plan: string;
-  status: string;
-  creditsTotal: number;
-  creditsRemaining: number;
-  creditsUsed: number;
-  lastSync: Date | null;
-  nextReset: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
-  usageLogs: Array<{
-    id: bigint;
-    operation: string;
-    cost: number;
-    timestamp: Date;
-    metadata: any;
-  }>;
-  adminLogs: Array<{
-    id: bigint;
-    action: string;
-    timestamp: Date;
-    reason: string | null;
-    adminUser: {
-      username: string;
-      email: string;
+type Website = Prisma.WebsiteGetPayload<{
+  include: {
+    usageLogs: true;
+    adminLogs: {
+      include: {
+        user: {
+          select: {
+            name: true;
+            email: true;
+          };
+        };
+      };
     };
-  }>;
-}
+  };
+}>;
 
 export default function WebsiteDetailsClient({ website }: { website: Website }) {
   const router = useRouter();
@@ -280,7 +265,7 @@ export default function WebsiteDetailsClient({ website }: { website: Website }) 
                   <p className="text-sm font-medium text-gray-900">{log.action.replace(/_/g, " ")}</p>
                   {log.reason && <p className="text-sm text-gray-500">{log.reason}</p>}
                   <p className="text-xs text-gray-400 mt-1">
-                    By {log.adminUser.username} • {formatDate(log.timestamp)}
+                    By {log.user.name || log.user.email} • {formatDate(log.timestamp)}
                   </p>
                 </div>
               </div>

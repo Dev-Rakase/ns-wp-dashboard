@@ -173,7 +173,7 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {stats.usageByDay.map((day: any) => (
+              {stats.usageByDay.map((day: { date: string; total: number }) => (
                 <div key={day.date} className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">
                     {new Date(day.date).toLocaleDateString()}

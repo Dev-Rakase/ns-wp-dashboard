@@ -16,7 +16,20 @@ export interface SyncCreditsPayload {
 export interface CloudflareResponse {
   success: boolean;
   message?: string;
-  data?: any;
+  data?: {
+    credits_total?: number;
+    credits_remaining?: number;
+    plan?: string;
+    logs?: Array<{
+      timestamp: number;
+      operation: string;
+      cost: number;
+      credits_remaining: number;
+    }>;
+    total?: number;
+    page?: number;
+    per_page?: number;
+  };
 }
 
 /**

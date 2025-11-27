@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 /**
  * Get admin logs with filtering
@@ -16,7 +17,7 @@ export async function getAdminLogs(params?: {
     const perPage = params?.perPage || 50;
     const skip = (page - 1) * perPage;
 
-    const where: any = {};
+    const where: Prisma.AdminLogWhereInput = {};
 
     if (params?.websiteId) {
       where.websiteId = params.websiteId;
@@ -84,14 +85,14 @@ export async function getUsageLogs(params?: {
     const perPage = params?.perPage || 50;
     const skip = (page - 1) * perPage;
 
-    const where: any = {};
+    const where: Prisma.UsageLogWhereInput = {};
 
     if (params?.websiteId) {
       where.websiteId = params.websiteId;
     }
 
     if (params?.operation) {
-      where.operation = params.operation;
+      where.operation = params.operation as Prisma.EnumOperationFilter;
     }
 
     const [logs, total] = await Promise.all([

@@ -5,6 +5,7 @@ import { syncCreditsWithCloudflare } from "@/lib/cloudflare";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { Prisma, Plan, Status } from "@prisma/client";
 
 /**
  * Get all websites with optional filtering
@@ -15,14 +16,14 @@ export async function getWebsites(params?: {
   search?: string;
 }) {
   try {
-    const where: any = {};
+    const where: Prisma.WebsiteWhereInput = {};
 
     if (params?.status) {
-      where.status = params.status;
+      where.status = params.status as Status;
     }
 
     if (params?.plan) {
-      where.plan = params.plan;
+      where.plan = params.plan as Plan;
     }
 
     if (params?.search) {
@@ -66,9 +67,9 @@ export async function getWebsite(id: number) {
             timestamp: "desc",
           },
           include: {
-            adminUser: {
+            user: {
               select: {
-                username: true,
+                name: true,
                 email: true,
               },
             },
@@ -125,11 +126,11 @@ export async function createWebsite(data: {
       data: {
         domain: data.domain,
         title: data.title,
-        plan: data.plan as any,
+        plan: data.plan as Plan,
         creditsTotal: data.creditsTotal,
         creditsRemaining: data.creditsTotal,
         creditsUsed: 0,
-        status: "ACTIVE",
+        status: Status.ACTIVE,
         nextReset,
       },
     });
@@ -138,7 +139,7 @@ export async function createWebsite(data: {
     await prisma.adminLog.create({
       data: {
         websiteId: website.id,
-        adminUserId: parseInt(session.user.id),
+        userId: session.user.id,
         action: "website_created",
         newValue: {
           domain: website.domain,
@@ -200,8 +201,8 @@ export async function updateWebsite(
       where: { id },
       data: {
         ...(data.title && { title: data.title }),
-        ...(data.plan && { plan: data.plan as any }),
-        ...(data.status && { status: data.status as any }),
+        ...(data.plan && { plan: data.plan as Plan }),
+        ...(data.status && { status: data.status as Status }),
       },
     });
 
@@ -209,7 +210,7 @@ export async function updateWebsite(
     await prisma.adminLog.create({
       data: {
         websiteId: website.id,
-        adminUserId: parseInt(session.user.id),
+        userId: session.user.id,
         action: "website_updated",
         oldValue: {
           title: oldWebsite.title,
@@ -331,7 +332,7 @@ export async function updateCredits(
     await prisma.adminLog.create({
       data: {
         websiteId: website.id,
-        adminUserId: parseInt(session.user.id),
+        userId: session.user.id,
         action: `credits_${data.operation}`,
         oldValue: {
           creditsRemaining: oldCredits,
@@ -408,7 +409,7 @@ export async function resetCredits(id: number, reason?: string) {
     await prisma.adminLog.create({
       data: {
         websiteId: website.id,
-        adminUserId: parseInt(session.user.id),
+        userId: session.user.id,
         action: "credits_reset",
         oldValue: {
           creditsRemaining: oldCredits,
@@ -479,4 +480,3 @@ export async function manualSync(id: number) {
     return { success: false, error: "Failed to sync with Cloudflare" };
   }
 }
-
