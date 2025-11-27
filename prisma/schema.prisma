@@ -1,0 +1,171 @@
+// Prisma schema for NS AI Search Admin Panel
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "mysql"
+    url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// BETTER AUTH CORE SCHEMA (DO NOT MODIFY TABLE NAMES)
+// Ref: https://www.better-auth.com/docs/concepts/database
+// ============================================================================
+
+model User {
+    id            String   @id @default(cuid())
+    name          String
+    email         String   @unique
+    emailVerified Boolean  @default(false)
+    image         String?
+    createdAt     DateTime @default(now())
+    updatedAt     DateTime @updatedAt
+
+    // Additional fields for our app
+    role String @default("VIEWER")
+
+    // Relations
+    sessions  Session[]
+    accounts  Account[]
+    adminLogs AdminLog[]
+
+    @@map("user")
+}
+
+model Session {
+    id        String   @id @default(cuid())
+    expiresAt DateTime
+    token     String   @unique
+    ipAddress String?
+    userAgent String?
+    userId    String
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@map("session")
+}
+
+model Account {
+    id                    String    @id @default(cuid())
+    accountId             String
+    providerId            String
+    userId                String
+    accessToken           String?   @db.Text
+    refreshToken          String?   @db.Text
+    idToken               String?   @db.Text
+    accessTokenExpiresAt  DateTime?
+    refreshTokenExpiresAt DateTime?
+    scope                 String?
+    password              String?
+    createdAt             DateTime  @default(now())
+    updatedAt             DateTime  @updatedAt
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@map("account")
+}
+
+model Verification {
+    id         String   @id @default(cuid())
+    identifier String
+    value      String
+    expiresAt  DateTime
+    createdAt  DateTime @default(now())
+    updatedAt  DateTime @updatedAt
+
+    @@map("verification")
+}
+
+// ============================================================================
+// CUSTOM APPLICATION SCHEMA
+// ============================================================================
+
+model Website {
+    id               Int       @id @default(autoincrement())
+    domain           String    @unique @db.VarChar(255)
+    title            String    @db.VarChar(255)
+    plan             Plan      @default(FREE)
+    status           Status    @default(ACTIVE)
+    creditsTotal     Int       @default(100) @map("credits_total")
+    creditsRemaining Int       @default(100) @map("credits_remaining")
+    creditsUsed      Int       @default(0) @map("credits_used")
+    lastSync         DateTime? @map("last_sync")
+    nextReset        DateTime? @map("next_reset")
+    createdAt        DateTime  @default(now()) @map("created_at")
+    updatedAt        DateTime  @updatedAt @map("updated_at")
+
+    usageLogs UsageLog[]
+    adminLogs AdminLog[]
+
+    @@index([domain])
+    @@index([status])
+    @@index([plan])
+    @@map("websites")
+}
+
+model UsageLog {
+    id        BigInt    @id @default(autoincrement())
+    websiteId Int       @map("website_id")
+    operation Operation
+    cost      Int       @default(1)
+    metadata  Json?
+    timestamp DateTime  @default(now())
+
+    website Website @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+
+    @@index([websiteId])
+    @@index([timestamp])
+    @@index([operation])
+    @@map("usage_logs")
+}
+
+model AdminLog {
+    id        BigInt   @id @default(autoincrement())
+    websiteId Int?     @map("website_id")
+    userId    String   @map("user_id")
+    action    String   @db.VarChar(100)
+    oldValue  Json?    @map("old_value")
+    newValue  Json?    @map("new_value")
+    reason    String?  @db.Text
+    timestamp DateTime @default(now())
+
+    website Website? @relation(fields: [websiteId], references: [id], onDelete: SetNull)
+    user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([websiteId])
+    @@index([userId])
+    @@index([timestamp])
+    @@index([action])
+    @@map("admin_logs")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum Plan {
+    FREE
+    BASIC
+    PRO
+    ENTERPRISE
+
+    @@map("plan")
+}
+
+enum Status {
+    ACTIVE
+    INACTIVE
+    SUSPENDED
+
+    @@map("status")
+}
+
+enum Operation {
+    CONTENT
+    QUERY
+
+    @@map("operation")
+}
