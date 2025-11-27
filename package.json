@@ -6,7 +6,8 @@
     "dev": "next dev --experimental-https",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "preinstall": "npx prisma generate"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
