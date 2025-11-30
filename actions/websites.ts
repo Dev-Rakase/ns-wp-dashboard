@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { syncCreditsWithCloudflare } from "@/lib/cloudflare";
+import { generateLicenseKey } from "@/lib/license";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
@@ -97,6 +98,8 @@ export async function createWebsite(data: {
   title: string;
   plan: string;
   creditsTotal: number;
+  subscriptionStart?: Date;
+  subscriptionEnd?: Date;
 }) {
   try {
     // Get current user
@@ -117,6 +120,9 @@ export async function createWebsite(data: {
       return { success: false, error: "Domain already exists" };
     }
 
+    // Generate license key
+    const licenseKey = generateLicenseKey();
+
     // Calculate next reset (first of next month)
     const now = new Date();
     const nextReset = new Date(now.getFullYear(), now.getMonth() + 1, 1);
@@ -126,11 +132,14 @@ export async function createWebsite(data: {
       data: {
         domain: data.domain,
         title: data.title,
+        licenseKey,
         plan: data.plan as Plan,
         creditsTotal: data.creditsTotal,
         creditsRemaining: data.creditsTotal,
         creditsUsed: 0,
         status: Status.ACTIVE,
+        subscriptionStart: data.subscriptionStart,
+        subscriptionEnd: data.subscriptionEnd,
         nextReset,
       },
     });
@@ -478,5 +487,112 @@ export async function manualSync(id: number) {
   } catch (error) {
     console.error("Error syncing:", error);
     return { success: false, error: "Failed to sync with Cloudflare" };
+  }
+}
+
+/**
+ * Renew subscription
+ */
+export async function renewSubscription(
+  websiteId: number,
+  data: {
+    subscriptionStart: Date;
+    subscriptionEnd: Date;
+    creditsTotal: number;
+    plan: Plan;
+  }
+) {
+  try {
+    const session = await auth.api.getSession({ headers: await headers() });
+
+    if (!session?.user) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const website = await prisma.website.update({
+      where: { id: websiteId },
+      data: {
+        subscriptionStart: data.subscriptionStart,
+        subscriptionEnd: data.subscriptionEnd,
+        creditsTotal: data.creditsTotal,
+        creditsRemaining: data.creditsTotal,
+        creditsUsed: 0,
+        plan: data.plan,
+        status: Status.ACTIVE,
+      },
+    });
+
+    // Sync with Cloudflare Durable Object
+    await syncCreditsWithCloudflare({
+      domain: website.domain,
+      credits_total: website.creditsTotal,
+      credits_remaining: website.creditsRemaining,
+      plan: website.plan,
+    });
+
+    // Log admin action
+    await prisma.adminLog.create({
+      data: {
+        websiteId,
+        userId: session.user.id,
+        action: "renew_subscription",
+        newValue: data,
+        reason: "Manual subscription renewal",
+      },
+    });
+
+    revalidatePath("/websites");
+    revalidatePath(`/websites/${websiteId}`);
+    return { success: true };
+  } catch (error) {
+    console.error("Error renewing subscription:", error);
+    return { success: false, error: "Failed to renew subscription" };
+  }
+}
+
+/**
+ * Regenerate license key
+ */
+export async function regenerateLicenseKey(websiteId: number) {
+  try {
+    const session = await auth.api.getSession({ headers: await headers() });
+
+    if (!session?.user) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const oldWebsite = await prisma.website.findUnique({
+      where: { id: websiteId },
+      select: { licenseKey: true },
+    });
+
+    if (!oldWebsite) {
+      return { success: false, error: "Website not found" };
+    }
+
+    const newKey = generateLicenseKey();
+
+    const website = await prisma.website.update({
+      where: { id: websiteId },
+      data: { licenseKey: newKey },
+    });
+
+    // Log the regeneration
+    await prisma.adminLog.create({
+      data: {
+        websiteId,
+        userId: session.user.id,
+        action: "regenerate_license_key",
+        oldValue: { licenseKey: oldWebsite.licenseKey },
+        newValue: { licenseKey: newKey },
+        reason: "Manual license key regeneration",
+      },
+    });
+
+    revalidatePath(`/websites/${websiteId}`);
+    return { success: true, licenseKey: newKey };
+  } catch (error) {
+    console.error("Error regenerating license key:", error);
+    return { success: false, error: "Failed to regenerate license key" };
   }
 }

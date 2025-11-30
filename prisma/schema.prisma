@@ -84,23 +84,27 @@ model Verification {
 // ============================================================================
 
 model Website {
-    id               Int       @id @default(autoincrement())
-    domain           String    @unique @db.VarChar(255)
-    title            String    @db.VarChar(255)
-    plan             Plan      @default(FREE)
-    status           Status    @default(ACTIVE)
-    creditsTotal     Int       @default(100) @map("credits_total")
-    creditsRemaining Int       @default(100) @map("credits_remaining")
-    creditsUsed      Int       @default(0) @map("credits_used")
-    lastSync         DateTime? @map("last_sync")
-    nextReset        DateTime? @map("next_reset")
-    createdAt        DateTime  @default(now()) @map("created_at")
-    updatedAt        DateTime  @updatedAt @map("updated_at")
+    id                Int       @id @default(autoincrement())
+    domain            String    @unique @db.VarChar(255)
+    title             String    @db.VarChar(255)
+    licenseKey        String    @unique @map("license_key") @db.VarChar(64)
+    plan              Plan      @default(FREE)
+    status            Status    @default(ACTIVE)
+    creditsTotal      Int       @default(100) @map("credits_total")
+    creditsRemaining  Int       @default(100) @map("credits_remaining")
+    creditsUsed       Int       @default(0) @map("credits_used")
+    subscriptionStart DateTime? @map("subscription_start")
+    subscriptionEnd   DateTime? @map("subscription_end")
+    lastSync          DateTime? @map("last_sync")
+    nextReset         DateTime? @map("next_reset")
+    createdAt         DateTime  @default(now()) @map("created_at")
+    updatedAt         DateTime  @updatedAt @map("updated_at")
 
     usageLogs UsageLog[]
     adminLogs AdminLog[]
 
     @@index([domain])
+    @@index([licenseKey])
     @@index([status])
     @@index([plan])
     @@map("websites")
