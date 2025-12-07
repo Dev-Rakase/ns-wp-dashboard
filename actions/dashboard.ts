@@ -34,51 +34,42 @@ export async function getDashboardStats() {
       },
     });
 
-    // Websites by plan
-    const websitesByPlan = await prisma.website.groupBy({
-      by: ["plan"],
-      _count: {
-        id: true,
-      },
-    });
+    const tenDaysFromNow = new Date();
+    tenDaysFromNow.setDate(tenDaysFromNow.getDate() + 10);
+    const now = new Date();
 
-    // Recent activity (last 10 admin logs)
-    const recentActivity = await prisma.adminLog.findMany({
-      take: 10,
+    const expiringWebsitesRaw = await prisma.website.findMany({
+      where: {
+        subscriptionEnd: {
+          not: null,
+          lte: tenDaysFromNow,
+        },
+      },
       orderBy: {
-        timestamp: "desc",
+        subscriptionEnd: "asc",
       },
-      include: {
-        website: {
-          select: {
-            domain: true,
-            title: true,
-          },
-        },
-        user: {
-          select: {
-            name: true,
-            email: true,
-          },
-        },
+      take: 10,
+      select: {
+        id: true,
+        title: true,
+        domain: true,
+        subscriptionEnd: true,
+        plan: true,
+        status: true,
       },
     });
 
-    // Usage in last 7 days
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-    const usageByDay = await prisma.$queryRaw<
-      Array<{ date: string; total: number }>
-    >`
-      SELECT 
-        DATE(timestamp) as date,
-        COUNT(*) as total
-      FROM usage_logs
-      WHERE timestamp >= ${sevenDaysAgo}
-      GROUP BY DATE(timestamp)
-      ORDER BY date ASC
-    `;
+    const expiringWebsites = expiringWebsitesRaw.map((site) => {
+      const end = site.subscriptionEnd ? new Date(site.subscriptionEnd) : null;
+      const days =
+        end && end > now
+          ? Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+          : 0;
+      return {
+        ...site,
+        daysRemaining: days,
+      };
+    });
 
     return {
       success: true,
@@ -90,12 +81,7 @@ export async function getDashboardStats() {
         totalCreditsAllocated: creditsData._sum.creditsTotal || 0,
         totalCreditsUsed: creditsData._sum.creditsUsed || 0,
         totalCreditsRemaining: creditsData._sum.creditsRemaining || 0,
-        websitesByPlan: websitesByPlan.map((item) => ({
-          plan: item.plan,
-          count: item._count.id,
-        })),
-        recentActivity,
-        usageByDay,
+        expiringWebsites,
       },
     };
   } catch (error) {

@@ -8,6 +8,23 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { Prisma, Plan, Status } from "@prisma/client";
 
+interface LogEntry {
+  id: number;
+  timestamp: number;
+  operation: string;
+  cost: number;
+  credits_remaining: number;
+}
+
+interface LogsResponse {
+  success: boolean;
+  logs?: LogEntry[];
+  total?: number;
+  page?: number;
+  per_page?: number;
+  error?: string;
+}
+
 /**
  * Get all websites with optional filtering
  */
@@ -56,12 +73,6 @@ export async function getWebsite(id: number) {
     const website = await prisma.website.findUnique({
       where: { id },
       include: {
-        usageLogs: {
-          take: 50,
-          orderBy: {
-            timestamp: "desc",
-          },
-        },
         adminLogs: {
           take: 20,
           orderBy: {
@@ -563,7 +574,7 @@ export async function regenerateLicenseKey(websiteId: number) {
 
     const oldWebsite = await prisma.website.findUnique({
       where: { id: websiteId },
-      select: { licenseKey: true },
+      select: { licenseKey: true, domain: true },
     });
 
     if (!oldWebsite) {
@@ -572,7 +583,7 @@ export async function regenerateLicenseKey(websiteId: number) {
 
     const newKey = generateLicenseKey();
 
-    const website = await prisma.website.update({
+    const updatedWebsite = await prisma.website.update({
       where: { id: websiteId },
       data: { licenseKey: newKey },
     });
@@ -589,10 +600,72 @@ export async function regenerateLicenseKey(websiteId: number) {
       },
     });
 
+    // Force Cloudflare Durable Object to refresh from database
+    // This immediately invalidates the old license key
+    await syncCreditsWithCloudflare({
+      domain: updatedWebsite.domain,
+      credits_total: updatedWebsite.creditsTotal,
+      credits_remaining: updatedWebsite.creditsRemaining,
+      plan: updatedWebsite.plan,
+    });
+
     revalidatePath(`/websites/${websiteId}`);
     return { success: true, licenseKey: newKey };
   } catch (error) {
     console.error("Error regenerating license key:", error);
     return { success: false, error: "Failed to regenerate license key" };
+  }
+}
+
+/**
+ * Get usage logs for a website domain
+ */
+export async function getWebsiteLogs(
+  domain: string,
+  page: number = 1,
+  perPage: number = 50
+): Promise<LogsResponse> {
+  try {
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+    if (!session?.user) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const cloudflareUrl = process.env.CLOUDFLARE_WORKER_URL;
+    const adminToken = process.env.ADMIN_TOKEN;
+
+    if (!cloudflareUrl || !adminToken) {
+      return { success: false, error: "Server configuration error" };
+    }
+
+    const response = await fetch(
+      `${cloudflareUrl}/admin/logs?domain=${encodeURIComponent(
+        domain
+      )}&page=${page}&per_page=${perPage}`,
+      {
+        headers: {
+          "X-Admin-Token": adminToken,
+        },
+        cache: "no-store",
+      }
+    );
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: `Failed to fetch logs: ${response.statusText}`,
+      };
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching logs:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch logs",
+    };
   }
 }

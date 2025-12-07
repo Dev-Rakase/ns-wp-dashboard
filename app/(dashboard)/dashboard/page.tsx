@@ -1,6 +1,5 @@
 import { getDashboardStats } from "@/actions/dashboard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Globe,
@@ -9,7 +8,8 @@ import {
   TrendingUp,
   AlertTriangle,
 } from "lucide-react";
-import { formatDate } from "@/lib/utils";
+import { formatDate, getPlanColor, getStatusColor } from "@/lib/utils";
+import Link from "next/link";
 
 export default async function DashboardPage() {
   const result = await getDashboardStats();
@@ -99,92 +99,85 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Websites by Plan */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Websites by Plan</CardTitle>
-            <CardDescription>Distribution of websites across plans</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {stats.websitesByPlan.map((item) => (
-              <div key={item.plan} className="flex items-center justify-between">
-                <Badge
-                  variant={
-                    item.plan === "FREE"
-                      ? "secondary"
-                      : item.plan === "BASIC"
-                      ? "default"
-                      : item.plan === "PRO"
-                      ? "default"
-                      : "default"
-                  }
-                >
-                  {item.plan}
-                </Badge>
-                <span className="text-2xl font-bold">{item.count}</span>
-              </div>
-            ))}
-            {stats.websitesByPlan.length === 0 && (
-              <p className="text-sm text-muted-foreground">No websites yet</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Recent Activity */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>Latest admin actions</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4 max-h-80 overflow-y-auto">
-              {stats.recentActivity.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No recent activity</p>
-              ) : (
-                stats.recentActivity.map((log) => (
-                  <div
-                    key={log.id.toString()}
-                    className="flex flex-col space-y-1 py-2 border-b last:border-0"
-                  >
-                    <p className="text-sm font-medium">
-                      {log.action.replace(/_/g, " ")}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {log.website?.domain || "N/A"} by {log.user?.name || log.user?.email || "Unknown"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatDate(log.timestamp)}
-                    </p>
-                  </div>
-                ))
-              )}
+      {/* Expiring Websites Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Websites Expiring Soon</CardTitle>
+          <CardDescription>Latest 10 websites that need renewal within 10 days</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {stats.expiringWebsites.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No websites are expiring within the next 10 days.
+            </p>
+          ) : (
+            <div className="bg-white shadow rounded-lg overflow-hidden">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Website
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Plan
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Expires On
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Days Remaining
+                    </th>
+                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {stats.expiringWebsites.map((site: { id: number; title: string; domain: string; subscriptionEnd: Date; daysRemaining: number; plan: string; status: string }) => (
+                    <tr key={site.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{site.title}</div>
+                          <div className="text-sm text-gray-500">{site.domain}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPlanColor(site.plan as any)}`}>
+                          {site.plan}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(site.status as any)}`}>
+                          {site.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatDate(site.subscriptionEnd)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`text-sm font-semibold ${site.daysRemaining <= 3 ? "text-red-600" : site.daysRemaining <= 7 ? "text-orange-600" : "text-yellow-600"}`}>
+                          {site.daysRemaining} {site.daysRemaining === 1 ? "day" : "days"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <Link
+                          href={`/websites/${site.id}`}
+                          className="inline-flex items-center px-3 py-1.5 border border-transparent rounded-md text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+                        >
+                          View Details
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Usage Chart */}
-      {stats.usageByDay.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Usage Last 7 Days</CardTitle>
-            <CardDescription>Daily operation count</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {stats.usageByDay.map((day: { date: string; total: number }) => (
-                <div key={day.date} className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    {new Date(day.date).toLocaleDateString()}
-                  </span>
-                  <span className="text-sm font-medium">{Number(day.total)} operations</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

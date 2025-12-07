@@ -4,7 +4,7 @@
  */
 
 const CLOUDFLARE_WORKER_URL = process.env.CLOUDFLARE_WORKER_URL || "";
-const CLOUDFLARE_ADMIN_TOKEN = process.env.CLOUDFLARE_ADMIN_TOKEN || "";
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "";
 
 export interface SyncCreditsPayload {
   domain: string;
@@ -38,7 +38,7 @@ export interface CloudflareResponse {
 export async function syncCreditsWithCloudflare(
   payload: SyncCreditsPayload
 ): Promise<CloudflareResponse> {
-  if (!CLOUDFLARE_WORKER_URL || !CLOUDFLARE_ADMIN_TOKEN) {
+  if (!CLOUDFLARE_WORKER_URL || !ADMIN_TOKEN) {
     console.error("Cloudflare configuration missing");
     return {
       success: false,
@@ -51,7 +51,7 @@ export async function syncCreditsWithCloudflare(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Admin-Token": CLOUDFLARE_ADMIN_TOKEN,
+        "X-Admin-Token": ADMIN_TOKEN,
       },
       body: JSON.stringify({
         site: payload.domain,
@@ -93,7 +93,7 @@ export async function getUsageLogsFromCloudflare(
   page: number = 1,
   perPage: number = 50
 ): Promise<CloudflareResponse> {
-  if (!CLOUDFLARE_WORKER_URL || !CLOUDFLARE_ADMIN_TOKEN) {
+  if (!CLOUDFLARE_WORKER_URL || !ADMIN_TOKEN) {
     return {
       success: false,
       message: "Cloudflare configuration not set",
@@ -108,7 +108,7 @@ export async function getUsageLogsFromCloudflare(
       {
         method: "GET",
         headers: {
-          "X-Admin-Token": CLOUDFLARE_ADMIN_TOKEN,
+          "X-Admin-Token": ADMIN_TOKEN,
         },
       }
     );

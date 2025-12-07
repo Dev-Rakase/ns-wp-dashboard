@@ -100,7 +100,6 @@ model Website {
     createdAt         DateTime  @default(now()) @map("created_at")
     updatedAt         DateTime  @updatedAt @map("updated_at")
 
-    usageLogs UsageLog[]
     adminLogs AdminLog[]
 
     @@index([domain])
@@ -108,22 +107,6 @@ model Website {
     @@index([status])
     @@index([plan])
     @@map("websites")
-}
-
-model UsageLog {
-    id        BigInt    @id @default(autoincrement())
-    websiteId Int       @map("website_id")
-    operation Operation
-    cost      Int       @default(1)
-    metadata  Json?
-    timestamp DateTime  @default(now())
-
-    website Website @relation(fields: [websiteId], references: [id], onDelete: Cascade)
-
-    @@index([websiteId])
-    @@index([timestamp])
-    @@index([operation])
-    @@map("usage_logs")
 }
 
 model AdminLog {
@@ -165,11 +148,4 @@ enum Status {
     SUSPENDED
 
     @@map("status")
-}
-
-enum Operation {
-    CONTENT
-    QUERY
-
-    @@map("operation")
 }
