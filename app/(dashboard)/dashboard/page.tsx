@@ -1,5 +1,11 @@
 import { getDashboardStats } from "@/actions/dashboard";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Globe,
@@ -42,7 +48,9 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Websites</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Websites
+            </CardTitle>
             <Globe className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -68,7 +76,9 @@ export default async function DashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Credits Allocated</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Credits Allocated
+            </CardTitle>
             <CreditCard className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -92,7 +102,9 @@ export default async function DashboardPage() {
             </div>
             <p className="text-xs text-muted-foreground">
               {stats.totalCreditsAllocated > 0
-                ? `${Math.round((stats.totalCreditsUsed / stats.totalCreditsAllocated) * 100)}% usage`
+                ? `${Math.round(
+                    (stats.totalCreditsUsed / stats.totalCreditsAllocated) * 100
+                  )}% usage`
                 : "0% usage"}
             </p>
           </CardContent>
@@ -103,7 +115,9 @@ export default async function DashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle>Websites Expiring Soon</CardTitle>
-          <CardDescription>Latest 10 websites that need renewal within 10 days</CardDescription>
+          <CardDescription>
+            Latest 10 websites that need renewal within 10 days
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {stats.expiringWebsites.length === 0 ? (
@@ -136,30 +150,56 @@ export default async function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {stats.expiringWebsites.map((site: { id: number; title: string; domain: string; subscriptionEnd: Date; daysRemaining: number; plan: string; status: string }) => (
-                    <tr key={site.id} className="hover:bg-gray-50 transition-colors">
+                  {stats.expiringWebsites.map((site) => (
+                    <tr
+                      key={site.id}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
-                          <div className="text-sm font-medium text-gray-900">{site.title}</div>
-                          <div className="text-sm text-gray-500">{site.domain}</div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {site.title}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {site.domain}
+                          </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPlanColor(site.plan as any)}`}>
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPlanColor(
+                            site.plan
+                          )}`}
+                        >
                           {site.plan}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(site.status as any)}`}>
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
+                            site.status
+                          )}`}
+                        >
                           {site.status}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(site.subscriptionEnd)}
+                        {site.subscriptionEnd
+                          ? formatDate(site.subscriptionEnd)
+                          : "N/A"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`text-sm font-semibold ${site.daysRemaining <= 3 ? "text-red-600" : site.daysRemaining <= 7 ? "text-orange-600" : "text-yellow-600"}`}>
-                          {site.daysRemaining} {site.daysRemaining === 1 ? "day" : "days"}
+                        <span
+                          className={`text-sm font-semibold ${
+                            site.daysRemaining <= 3
+                              ? "text-red-600"
+                              : site.daysRemaining <= 7
+                              ? "text-orange-600"
+                              : "text-yellow-600"
+                          }`}
+                        >
+                          {site.daysRemaining}{" "}
+                          {site.daysRemaining === 1 ? "day" : "days"}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
