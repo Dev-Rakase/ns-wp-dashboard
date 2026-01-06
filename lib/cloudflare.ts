@@ -134,3 +134,84 @@ export async function getUsageLogsFromCloudflare(
     };
   }
 }
+
+/**
+ * Update KV cache with page_id -> domain mapping
+ */
+export async function updatePageIdCache(
+  pageId: string,
+  domain: string
+): Promise<void> {
+  // This will be implemented in Cloudflare Worker
+  // For now, we'll call an admin endpoint if it exists
+  if (!CLOUDFLARE_WORKER_URL || !ADMIN_TOKEN) {
+    console.warn("Cloudflare configuration missing, skipping KV cache update");
+    return;
+  }
+
+  try {
+    await fetch(`${CLOUDFLARE_WORKER_URL}/admin/update-page-cache`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Admin-Token": ADMIN_TOKEN,
+      },
+      body: JSON.stringify({ pageId, domain }),
+    });
+  } catch (error) {
+    console.error("Error updating page ID cache:", error);
+    // Non-critical, continue
+  }
+}
+
+/**
+ * Invalidate page ID cache entry
+ */
+export async function invalidatePageIdCache(pageId: string): Promise<void> {
+  if (!CLOUDFLARE_WORKER_URL || !ADMIN_TOKEN) {
+    console.warn(
+      "Cloudflare configuration missing, skipping KV cache invalidation"
+    );
+    return;
+  }
+
+  try {
+    await fetch(`${CLOUDFLARE_WORKER_URL}/admin/invalidate-page-cache`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Admin-Token": ADMIN_TOKEN,
+      },
+      body: JSON.stringify({ pageId }),
+    });
+  } catch (error) {
+    console.error("Error invalidating page ID cache:", error);
+    // Non-critical, continue
+  }
+}
+
+/**
+ * Force refresh Cloudflare Durable Object cache
+ */
+export async function forceRefreshCloudflareCache(
+  domain: string
+): Promise<void> {
+  if (!CLOUDFLARE_WORKER_URL || !ADMIN_TOKEN) {
+    console.warn("Cloudflare configuration missing, skipping cache refresh");
+    return;
+  }
+
+  try {
+    await fetch(`${CLOUDFLARE_WORKER_URL}/admin/sync-credits`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Admin-Token": ADMIN_TOKEN,
+      },
+      body: JSON.stringify({ domain }),
+    });
+  } catch (error) {
+    console.error("Error refreshing Cloudflare cache:", error);
+    // Non-critical, continue
+  }
+}
