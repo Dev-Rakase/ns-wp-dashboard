@@ -3,10 +3,31 @@ import type { NextRequest } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
 
 // Public routes that don't require authentication
-const publicRoutes = ["/login", "/api/auth"];
+// Messenger endpoints are public but require license_key and domain validation
+const publicRoutes = [
+  "/login",
+  "/api/auth",
+  "/api/messenger/auth",
+  "/api/messenger/status",
+  "/api/messenger/callback",
+  "/api/messenger/disconnect",
+];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Handle CORS preflight (OPTIONS) requests for messenger endpoints
+  if (request.method === "OPTIONS" && pathname.startsWith("/api/messenger")) {
+    return new NextResponse(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        "Access-Control-Max-Age": "86400",
+      },
+    });
+  }
 
   // Check if the route is public
   const isPublicRoute = publicRoutes.some((route) =>

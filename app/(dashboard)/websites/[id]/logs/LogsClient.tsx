@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Activity, Search } from "lucide-react";
+import { Activity, Search, MessageCircle } from "lucide-react";
 
 interface LogEntry {
   id: number;
@@ -29,7 +29,7 @@ interface LogsData {
   per_page: number;
 }
 
-type TabType = "content" | "query";
+type TabType = "content" | "query" | "messenger";
 
 export default function LogsClient({ domain }: { domain: string }) {
   const [logsData, setLogsData] = useState<LogsData | null>(null);
@@ -52,8 +52,10 @@ export default function LogsClient({ domain }: { domain: string }) {
       }
 
       if (result.logs && result.total !== undefined) {
+        // Ensure we only display the latest 100 logs maximum
+        const limitedLogs = result.logs.slice(0, 100);
         setLogsData({
-          logs: result.logs,
+          logs: limitedLogs,
           total: result.total,
           page: result.page || 1,
           per_page: result.per_page || perPage,
@@ -89,7 +91,16 @@ export default function LogsClient({ domain }: { domain: string }) {
   const queryLogs =
     logsData?.logs.filter((log) => log.operation.toLowerCase() === "query") ||
     [];
-  const currentLogs = activeTab === "content" ? contentLogs : queryLogs;
+  const messengerLogs =
+    logsData?.logs.filter(
+      (log) => log.operation.toLowerCase() === "messenger"
+    ) || [];
+  const currentLogs =
+    activeTab === "content"
+      ? contentLogs
+      : activeTab === "query"
+      ? queryLogs
+      : messengerLogs;
 
   if (loading && !logsData) {
     return (
@@ -143,6 +154,25 @@ export default function LogsClient({ domain }: { domain: string }) {
               </Badge>
             </div>
           </button>
+          <button
+            onClick={() => setActiveTab("messenger")}
+            className={`
+              px-6 py-3 text-sm font-medium transition-colors relative
+              ${
+                activeTab === "messenger"
+                  ? "text-primary border-b-2 border-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }
+            `}
+          >
+            <div className="flex items-center gap-2">
+              <MessageCircle className="h-4 w-4" />
+              <span>Messenger</span>
+              <Badge variant="secondary" className="ml-1">
+                {messengerLogs.length}
+              </Badge>
+            </div>
+          </button>
         </div>
       </div>
 
@@ -162,7 +192,12 @@ export default function LogsClient({ domain }: { domain: string }) {
         <div className="rounded-lg border p-12 text-center mt-4 bg-muted/20">
           <div className="text-5xl mb-4">📊</div>
           <h3 className="text-lg font-semibold mb-2">
-            No {activeTab === "content" ? "Content Embedding" : "Search Query"}{" "}
+            No{" "}
+            {activeTab === "content"
+              ? "Content Embedding"
+              : activeTab === "query"
+              ? "Search Query"
+              : "Messenger"}{" "}
             logs yet
           </h3>
           <p className="text-sm text-muted-foreground">
@@ -177,7 +212,11 @@ export default function LogsClient({ domain }: { domain: string }) {
           <div className="bg-muted/50 px-6 py-4 border-b flex items-center justify-between">
             <h3 className="font-semibold">
               Latest{" "}
-              {activeTab === "content" ? "Content Embedding" : "Search Query"}{" "}
+              {activeTab === "content"
+                ? "Content Embedding"
+                : activeTab === "query"
+                ? "Search Query"
+                : "Messenger"}{" "}
               Logs
             </h3>
             <span className="text-sm text-muted-foreground">
@@ -193,11 +232,8 @@ export default function LogsClient({ domain }: { domain: string }) {
                 <TableHead className="w-[140px] text-xs uppercase tracking-wider">
                   Operation
                 </TableHead>
-                <TableHead className="w-[120px] text-xs uppercase tracking-wider">
-                  Cost
-                </TableHead>
                 <TableHead className="text-xs uppercase tracking-wider">
-                  Credits Remaining
+                  Cost
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -219,6 +255,8 @@ export default function LogsClient({ domain }: { domain: string }) {
                         variant={
                           log.operation.toLowerCase() === "content"
                             ? "default"
+                            : log.operation.toLowerCase() === "messenger"
+                            ? "default"
                             : "secondary"
                         }
                         className="capitalize"
@@ -228,12 +266,7 @@ export default function LogsClient({ domain }: { domain: string }) {
                     </TableCell>
                     <TableCell>
                       <span className="font-semibold text-destructive">
-                        {log.cost.toLocaleString()}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-bold">
-                        {log.credits_remaining.toLocaleString()}
+                        {log.cost.toLocaleString()} credits
                       </span>
                     </TableCell>
                   </TableRow>

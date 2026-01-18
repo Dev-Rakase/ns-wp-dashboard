@@ -1,7 +1,11 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { syncCreditsWithCloudflare } from "@/lib/cloudflare";
+import {
+  syncCreditsWithCloudflare,
+  forceRefreshCloudflareCache,
+  updatePageIdCache,
+} from "@/lib/cloudflare";
 import { generateLicenseKey } from "@/lib/license";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
@@ -473,7 +477,12 @@ export async function manualSync(id: number) {
       return { success: false, error: "Website not found" };
     }
 
-    // Sync with Cloudflare
+    // Step 1: Force refresh CreditsManager from database (syncs everything: credits, license key, tokens, etc.)
+    // This calls /admin/sync-credits which triggers forceRefresh() on CreditsManager
+    await forceRefreshCloudflareCache(website.domain);
+
+    // Step 2: Sync credits with Cloudflare (ensure credits are up to date)
+    // This calls /admin/set-credits which updates credits in CreditsManager cache
     const syncResult = await syncCreditsWithCloudflare({
       domain: website.domain,
       credits_total: website.creditsTotal,
@@ -485,7 +494,13 @@ export async function manualSync(id: number) {
       return { success: false, error: syncResult.message };
     }
 
-    // Update last sync timestamp
+    // Step 3: Update page ID cache if messenger is enabled (for Messenger webhook routing)
+    // This calls /admin/update-page-cache to update KV cache with page_id -> domain mapping
+    if (website.messengerEnabled && website.facebookPageId) {
+      await updatePageIdCache(website.facebookPageId, website.domain);
+    }
+
+    // Update last sync timestamp in database
     await prisma.website.update({
       where: { id },
       data: {
@@ -494,7 +509,7 @@ export async function manualSync(id: number) {
     });
 
     revalidatePath(`/websites/${id}`);
-    return { success: true, message: "Synced successfully" };
+    return { success: true, message: "Synced successfully with Cloudflare" };
   } catch (error) {
     console.error("Error syncing:", error);
     return { success: false, error: "Failed to sync with Cloudflare" };

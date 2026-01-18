@@ -73,18 +73,31 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(errorUrl.toString());
     }
 
+    // Get WordPress redirect URI from query params (where to redirect after OAuth)
+    const wpRedirectUri =
+      searchParams.get("redirect_uri") ||
+      `https://${domain}/wp-admin/admin.php?page=ns-ai-search-messenger`;
+
     // Build Facebook OAuth URL
-    const state = Buffer.from(JSON.stringify({ domain, licenseKey })).toString(
-      "base64"
-    );
+    // Include redirect_uri in state so we can redirect back to WordPress after OAuth
+    // Facebook will preserve the state parameter through the OAuth flow
+    const state = Buffer.from(
+      JSON.stringify({
+        domain,
+        licenseKey,
+        redirect_uri: wpRedirectUri,
+      })
+    ).toString("base64");
+
     const facebookAuthUrl = new URL(
       "https://www.facebook.com/v24.0/dialog/oauth"
     );
     facebookAuthUrl.searchParams.set("client_id", FACEBOOK_APP_ID);
+    // redirect_uri must match exactly what's configured in Facebook App settings
     facebookAuthUrl.searchParams.set("redirect_uri", FACEBOOK_REDIRECT_URI);
     facebookAuthUrl.searchParams.set(
       "scope",
-      "pages_messaging,pages_manage_metadata,pages_read_engagement"
+      "pages_messaging,pages_manage_metadata"
     );
     facebookAuthUrl.searchParams.set("state", state);
     facebookAuthUrl.searchParams.set("response_type", "code");
