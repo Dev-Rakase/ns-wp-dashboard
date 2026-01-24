@@ -1,6 +1,13 @@
+import type { Metadata } from "next";
+
 const metaDeletionDocsUrl =
   "https://developers.facebook.com/docs/development/create-an-app/app-dashboard/data-deletion-callback";
 const metaTermsUrl = "https://developers.facebook.com/terms/";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy | NS AI Search",
+  description: "Privacy policy for the NS AI Search Messenger integration.",
+};
 
 export default function PrivacyPolicyPage() {
   const baseUrl =

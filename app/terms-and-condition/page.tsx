@@ -1,4 +1,11 @@
+import type { Metadata } from "next";
+
 const metaTermsUrl = "https://developers.facebook.com/terms/";
+
+export const metadata: Metadata = {
+  title: "Terms and Conditions | NS AI Search",
+  description: "Terms and conditions for the NS AI Search Messenger integration.",
+};
 
 export default function TermsAndConditionsPage() {
   return (
