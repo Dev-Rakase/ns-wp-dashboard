@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
     facebookAuthUrl.searchParams.set("redirect_uri", FACEBOOK_REDIRECT_URI);
     facebookAuthUrl.searchParams.set(
       "scope",
-      "pages_messaging,pages_manage_metadata,business_management"
+      "pages_messaging,pages_manage_metadata,business_management,pages_show_list"
     );
     facebookAuthUrl.searchParams.set("state", state);
     facebookAuthUrl.searchParams.set("response_type", "code");
