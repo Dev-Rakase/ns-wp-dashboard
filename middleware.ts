@@ -6,6 +6,8 @@ import { getSessionCookie } from "better-auth/cookies";
 // Messenger endpoints are public but require license_key and domain validation
 const publicRoutes = [
   "/login",
+  "/terms-and-condition",
+  "/privacy-policy",
   "/api/auth",
   "/api/messenger/auth",
   "/api/messenger/status",
